@@ -162,9 +162,3 @@ async def extract_text_from_pdf_full(file: UploadFile = File(...)):
                 return "\n".join(texts) if texts else "未识别到文字"
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("start:app", host="127.0.0.1", port=8888)
