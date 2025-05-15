@@ -1,11 +1,16 @@
 import gc
+import os
+import tempfile
+from contextlib import asynccontextmanager
+
 import cv2
+import fitz  # PyMuPDF
 import numpy as np
+from PIL import Image
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import PlainTextResponse
 from paddleocr import PaddleOCR
 from pydantic.v1 import BaseSettings
-from contextlib import asynccontextmanager
 
 
 class Settings(BaseSettings):
@@ -22,7 +27,7 @@ settings = Settings()
 app = FastAPI(title="百度飞桨 PaddleOCR 文字识别")
 
 # 初始化 OCR 引擎
-ocr = PaddleOCR(
+ocr_light = PaddleOCR(
     det_model_dir=settings.det_model_dir,
     rec_model_dir=settings.rec_model_dir,
     cls_model_dir=settings.cls_model_dir,
@@ -30,7 +35,7 @@ ocr = PaddleOCR(
     use_angle_cls=True
 )
 
-ocr_server = PaddleOCR(
+ocr_full = PaddleOCR(
     det_model_dir=settings.det_model_dir_server,
     rec_model_dir=settings.rec_model_dir_server,
     cls_model_dir=settings.cls_model_dir,
@@ -39,18 +44,51 @@ ocr_server = PaddleOCR(
 )
 
 
-async def process_image(file: UploadFile):
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="请上传有效的图片文件（jpg/png）")
+@asynccontextmanager
+async def image_processing_context(file: UploadFile):
+    try:
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="请上传有效的图片文件（jpg/png）")
 
-    contents = await file.read()
-    np_image = np.frombuffer(contents, np.uint8)
-    image = cv2.imdecode(np_image, cv2.IMREAD_COLOR)
+        contents = await file.read()
+        np_image = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(np_image, cv2.IMREAD_COLOR)
+        if image is None:
+            raise HTTPException(status_code=400, detail="无法解码图像")
 
-    if image is None:
-        raise HTTPException(status_code=400, detail="无法解码图像")
+        enhanced = cv2.convertScaleAbs(image, alpha=1.5, beta=0)
+        yield enhanced
+    finally:
+        gc.collect()
 
-    return cv2.convertScaleAbs(image, alpha=1.5, beta=0)
+
+@asynccontextmanager
+async def pdf_processing_context(file: UploadFile):
+    try:
+        if not file.filename.endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="请上传有效的 PDF 文件")
+
+        contents = await file.read()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+            tmp_pdf.write(contents)
+            tmp_pdf_path = tmp_pdf.name
+
+        images = []
+        try:
+            with fitz.open(tmp_pdf_path) as pdf:
+                for page in pdf:
+                    mat = fitz.Matrix(2, 2)
+                    pm = page.get_pixmap(matrix=mat, alpha=False)
+                    img = Image.frombytes("RGB", (pm.width, pm.height), pm.samples)
+                    image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                    enhanced = cv2.convertScaleAbs(image, alpha=1.5, beta=0)
+                    images.append(enhanced)
+        finally:
+            os.remove(tmp_pdf_path)
+
+        yield images
+    finally:
+        gc.collect()
 
 
 def process_ocr_result(result):
@@ -58,20 +96,11 @@ def process_ocr_result(result):
     return "\n".join(texts) if texts else "未识别到文字"
 
 
-@asynccontextmanager
-async def image_processing_context(file):
-    try:
-        image = await process_image(file)
-        yield image
-    finally:
-        gc.collect()
-
-
-@app.post("/ocr_image_light", response_class=PlainTextResponse, summary="提取图片文字——超轻量")
+@app.post("/ocr_image_light", response_class=PlainTextResponse, summary="提取图片文字——轻量模型")
 async def extract_text_from_image_light(file: UploadFile = File(...)):
     async with image_processing_context(file) as image:
         try:
-            result = ocr.ocr(image, det=True, cls=False)
+            result = ocr_light.ocr(image, det=True, cls=False)
             return process_ocr_result(result)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
@@ -81,10 +110,39 @@ async def extract_text_from_image_light(file: UploadFile = File(...)):
 async def extract_text_from_image_full(file: UploadFile = File(...)):
     async with image_processing_context(file) as image:
         try:
-            result = ocr_server.ocr(image, det=True, cls=False)
+            result = ocr_full.ocr(image, det=True, cls=False)
             return process_ocr_result(result)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+
+
+@app.post("/ocr_pdf_light", response_class=PlainTextResponse, summary="提取 PDF 中文字（轻量模型）")
+async def extract_text_from_pdf_light(file: UploadFile = File(...)):
+    async with pdf_processing_context(file) as images:
+        try:
+            texts = []
+            for image in images:
+                result = ocr_light.ocr(image, det=True, cls=False)
+                page_text = process_ocr_result(result)
+                texts.append(page_text)
+            return "\n".join(texts) if texts else "未识别到文字"
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+
+
+@app.post("/ocr_pdf_full", response_class=PlainTextResponse, summary="提取 PDF 中文字（全量模型）")
+async def extract_text_from_pdf_full(file: UploadFile = File(...)):
+    async with pdf_processing_context(file) as images:
+        try:
+            texts = []
+            for image in images:
+                result = ocr_full.ocr(image, det=True, cls=False)
+                page_text = process_ocr_result(result)
+                texts.append(page_text)
+            return "\n".join(texts) if texts else "未识别到文字"
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+
 
 
 if __name__ == "__main__":

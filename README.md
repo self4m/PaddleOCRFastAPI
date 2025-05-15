@@ -32,7 +32,7 @@ deactivate
 [https://www.paddlepaddle.org.cn/install/quick](https://www.paddlepaddle.org.cn/install/quick)
 - 安装完成后手动其他依赖
 ```bash
-pip install fastapi uvicorn paddleocr opencv-python numpy pydantic python-multipart
+pip install fastapi uvicorn paddleocr opencv-python numpy pydantic python-multipart pymupdf pillow
 ```
 
 4. 下载模型文件  
@@ -57,3 +57,11 @@ python3 start.py
 | 请求参数 | file: 图片文件 (UploadFile)    | file: 图片文件 (UploadFile)   |
 | 备注   | 使用轻量级OCR模型，带文字检测（det=True） | 使用全量OCR模型，带文字检测（det=True） |
 
+## pdf接口
+| 请求路径 | /ocr\_pdf\_light           | /ocr\_pdf\_full           |
+| ---- |----------------------------|---------------------------|
+| 接口名称 | 提取pdf文字——超轻量               | 提取pdf文字——全量模型             |
+| 请求方式 | POST                       | POST                      |
+| 返回内容 | 识别出的文字文本                   | 识别出的文字文本                  |
+| 请求参数 | file: pdf文件 (UploadFile)   | file: pdf文件 (UploadFile)  |
+| 备注   | 使用轻量级OCR模型，带文字检测（det=True） | 使用全量OCR模型，带文字检测（det=True） |
