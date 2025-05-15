@@ -51,7 +51,7 @@ pip install fastapi uvicorn paddleocr opencv-python numpy pydantic python-multip
    项目默认自动下载两种模型：
 
 * **全量模型**
-* **轻量模型**
+* **轻量模型**  
   不同接口调用不同模型。  
   如果需要使用自定义模型，请修改代码中 `DET_MODEL_DIR`、`REC_MODEL_DIR`、`CLS_MODEL_DIR` 等变量。
 
