@@ -1,5 +1,6 @@
 import gc
 import os
+import shutil
 import tempfile
 from contextlib import asynccontextmanager
 
@@ -64,30 +65,31 @@ async def image_processing_context(file: UploadFile):
 
 @asynccontextmanager
 async def pdf_processing_context(file: UploadFile):
-    try:
-        if not file.filename.endswith(".pdf"):
-            raise HTTPException(status_code=400, detail="请上传有效的 PDF 文件")
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="请上传有效的 PDF 文件")
 
-        contents = await file.read()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
-            tmp_pdf.write(contents)
-            tmp_pdf_path = tmp_pdf.name
+    contents = await file.read()
+
+    tmp_dir = tempfile.mkdtemp()
+    tmp_pdf_path = os.path.join(tmp_dir, "temp.pdf")
+
+    try:
+        with open(tmp_pdf_path, "wb") as f:
+            f.write(contents)
 
         images = []
-        try:
-            with fitz.open(tmp_pdf_path) as pdf:
-                for page in pdf:
-                    mat = fitz.Matrix(2, 2)
-                    pm = page.get_pixmap(matrix=mat, alpha=False)
-                    img = Image.frombytes("RGB", (pm.width, pm.height), pm.samples)
-                    image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-                    enhanced = cv2.convertScaleAbs(image, alpha=1.5, beta=0)
-                    images.append(enhanced)
-        finally:
-            os.remove(tmp_pdf_path)
+        with fitz.open(tmp_pdf_path) as pdf:
+            for page in pdf:
+                mat = fitz.Matrix(2, 2)
+                pm = page.get_pixmap(matrix=mat, alpha=False)
+                img = Image.frombytes("RGB", (pm.width, pm.height), pm.samples)
+                image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                enhanced = cv2.convertScaleAbs(image, alpha=1.5, beta=0)
+                images.append(enhanced)
 
         yield images
     finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)  # 彻底删除整个临时目录及文件
         gc.collect()
 
 
