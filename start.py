@@ -167,4 +167,4 @@ async def extract_text_from_pdf_full(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("start:app", host="127.0.0.1", port=8888, reload=True)
+    uvicorn.run("start:app", host="127.0.0.1", port=8888)
