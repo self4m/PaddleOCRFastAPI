@@ -1,7 +1,9 @@
+import asyncio
 import gc
 import os
 import shutil
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
 import cv2
@@ -12,6 +14,12 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import PlainTextResponse
 from paddleocr import PaddleOCR
 from pydantic.v1 import BaseSettings
+
+# 定义最大并发数和线程池
+MAX_CONCURRENT_REQUESTS = 3
+MAX_THREAD_WORKERS = 4
+semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+thread_pool = ThreadPoolExecutor(max_workers=MAX_THREAD_WORKERS)
 
 
 class Settings(BaseSettings):
@@ -89,7 +97,7 @@ async def pdf_processing_context(file: UploadFile):
 
         yield images
     finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)  # 彻底删除整个临时目录及文件
+        shutil.rmtree(tmp_dir, ignore_errors=True)
         gc.collect()
 
 
@@ -98,53 +106,62 @@ def process_ocr_result(result):
     return "\n".join(texts) if texts else "未识别到文字"
 
 
+async def run_ocr_in_thread(ocr_engine, image):
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(thread_pool, lambda: ocr_engine.ocr(image, det=True, cls=False))
+    return result
+
+
 @app.post("/ocr_image_light", response_class=PlainTextResponse, summary="提取图片文字——轻量模型")
 async def extract_text_from_image_light(file: UploadFile = File(...)):
-    async with image_processing_context(file) as image:
-        try:
-            result = ocr_light.ocr(image, det=True, cls=False)
-            return process_ocr_result(result)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+    async with semaphore:
+        async with image_processing_context(file) as image:
+            try:
+                result = await run_ocr_in_thread(ocr_light, image)
+                return process_ocr_result(result)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
 
 
 @app.post("/ocr_image_full", response_class=PlainTextResponse, summary="提取图片文字——全量模型")
 async def extract_text_from_image_full(file: UploadFile = File(...)):
-    async with image_processing_context(file) as image:
-        try:
-            result = ocr_full.ocr(image, det=True, cls=False)
-            return process_ocr_result(result)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+    async with semaphore:
+        async with image_processing_context(file) as image:
+            try:
+                result = await run_ocr_in_thread(ocr_full, image)
+                return process_ocr_result(result)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
 
 
 @app.post("/ocr_pdf_light", response_class=PlainTextResponse, summary="提取 PDF 中文字（轻量模型）")
 async def extract_text_from_pdf_light(file: UploadFile = File(...)):
-    async with pdf_processing_context(file) as images:
-        try:
-            texts = []
-            for image in images:
-                result = ocr_light.ocr(image, det=True, cls=False)
-                page_text = process_ocr_result(result)
-                texts.append(page_text)
-            return "\n".join(texts) if texts else "未识别到文字"
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+    async with semaphore:
+        async with pdf_processing_context(file) as images:
+            try:
+                texts = []
+                for image in images:
+                    result = await run_ocr_in_thread(ocr_light, image)
+                    page_text = process_ocr_result(result)
+                    texts.append(page_text)
+                return "\n".join(texts) if texts else "未识别到文字"
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
 
 
 @app.post("/ocr_pdf_full", response_class=PlainTextResponse, summary="提取 PDF 中文字（全量模型）")
 async def extract_text_from_pdf_full(file: UploadFile = File(...)):
-    async with pdf_processing_context(file) as images:
-        try:
-            texts = []
-            for image in images:
-                result = ocr_full.ocr(image, det=True, cls=False)
-                page_text = process_ocr_result(result)
-                texts.append(page_text)
-            return "\n".join(texts) if texts else "未识别到文字"
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
-
+    async with semaphore:
+        async with pdf_processing_context(file) as images:
+            try:
+                texts = []
+                for image in images:
+                    result = await run_ocr_in_thread(ocr_full, image)
+                    page_text = process_ocr_result(result)
+                    texts.append(page_text)
+                return "\n".join(texts) if texts else "未识别到文字"
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
 
 
 if __name__ == "__main__":
