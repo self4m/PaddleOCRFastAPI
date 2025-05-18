@@ -40,16 +40,14 @@ ocr_light = PaddleOCR(
     det_model_dir=settings.det_model_dir,
     rec_model_dir=settings.rec_model_dir,
     cls_model_dir=settings.cls_model_dir,
-    lang="ch",
-    use_angle_cls=True
+    lang="ch"
 )
 
 ocr_full = PaddleOCR(
     det_model_dir=settings.det_model_dir_server,
     rec_model_dir=settings.rec_model_dir_server,
     cls_model_dir=settings.cls_model_dir,
-    lang="ch",
-    use_angle_cls=True
+    lang="ch"
 )
 
 
