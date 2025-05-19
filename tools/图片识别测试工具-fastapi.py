@@ -70,7 +70,7 @@ def return_result_with_result_photo(ocr_result, img, start_time):
     boxes = [line[0] for line in ocr_result]
     txts = [line[1][0] for line in ocr_result]
     scores = [line[1][1] for line in ocr_result]
-    im_show = draw_ocr(img, boxes, txts, scores, font_path='../font/simfang.ttf')
+    im_show = draw_ocr(img, boxes, txts, scores, font_path='../model/font/simfang.ttf')
     im_show = Image.fromarray(im_show)
     buffer = io.BytesIO()
     im_show.save(buffer, format='JPEG')
