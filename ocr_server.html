@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OCR 文字识别工具</title>
     <style>
         :root {
@@ -15,7 +15,6 @@
             --success: #28a745;
             --error: #dc3545;
         }
-
         body {
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg);
@@ -23,12 +22,10 @@
             margin: 0;
             padding: 20px;
         }
-
         .container {
             max-width: 1000px;
             margin: auto;
         }
-
         .card {
             background-color: var(--card-bg);
             border-radius: 8px;
@@ -36,27 +33,22 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             margin-bottom: 24px;
         }
-
         h1, h2, h3 {
             color: var(--primary);
             margin-top: 0;
         }
-
         h1 {
             text-align: center;
             margin-bottom: 24px;
         }
-
         .form-group {
             margin-bottom: 16px;
         }
-
         label {
             display: block;
             margin-bottom: 6px;
             font-weight: bold;
         }
-
         input[type="text"],
         input[type="file"] {
             width: 100%;
@@ -66,7 +58,6 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-
         button {
             background-color: var(--primary);
             color: #fff;
@@ -76,30 +67,25 @@
             font-size: 16px;
             cursor: pointer;
         }
-
         button:hover {
             background-color: var(--secondary);
         }
-
         .status {
             padding: 10px;
             border-radius: 4px;
             display: none;
             margin-top: 16px;
         }
-
         .status.success {
             background-color: rgba(40, 167, 69, 0.2);
             color: var(--success);
             display: block;
         }
-
         .status.error {
             background-color: rgba(220, 53, 69, 0.2);
             color: var(--error);
             display: block;
         }
-
         .result-block {
             background-color: #f8f9fa;
             border: 1px solid var(--border);
@@ -112,23 +98,17 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
-
         .image-container {
             text-align: center;
             margin-top: 16px;
         }
-
-        .result-img {
+        .image-container img {
             max-width: 100%;
-            height: auto;
             border-radius: 4px;
             border: 1px solid var(--border);
             margin-bottom: 10px;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
+            display: inline-block;
         }
-
         .no-image {
             color: #888;
             font-style: italic;
@@ -136,7 +116,6 @@
             border: 1px dashed var(--border);
             border-radius: 4px;
         }
-
         .radio-inline {
             display: inline-block;
             margin-right: 20px;
@@ -152,60 +131,55 @@
 
         <div class="form-group">
             <label for="apiEndpoint">API 接口地址</label>
-            <input id="apiEndpoint" type="text" value="http://127.0.0.1:8888/ocr">
+            <input type="text" id="apiEndpoint" value="http://127.0.0.1:8888/ocr" />
         </div>
 
         <div class="form-group">
-            <label for="fileInput">选择图片文件</label>
-            <input accept="application/pdf" id="fileInput" type="file">
+            <label for="fileInput">选择图片或 PDF 文件</label>
+            <input type="file" id="fileInput" accept="image/*,.pdf" />
         </div>
 
         <div class="form-group">
             <label>选择模型类型:</label>
             <label class="radio-inline">
-                <input checked name="model" onclick="toggleImage(false)" type="radio" value="ocr"> 轻量模型
+                <input type="radio" name="model" value="ocr_light" checked /> 轻量模型
             </label>
             <label class="radio-inline">
-                <input name="model" onclick="toggleImage(false)" type="radio" value="ocr_full"> 全量模型
+                <input type="radio" name="model" value="ocr_server" /> 全量模型
             </label>
         </div>
 
         <div class="form-group">
             <label>选择结果类型:</label>
             <label class="radio-inline">
-                <input name="resultType" onclick="toggleImage(false)" type="radio" value="return_final_result_one_line">
-                不分行显示结果
+                <input type="radio" name="resultType" value="return_final_result_one_line" onclick="toggleImage(false)" /> 不分行显示结果
             </label>
             <label class="radio-inline">
-                <input name="resultType" onclick="toggleImage(false)" type="radio" value="return_final_result"> 分行显示结果
+                <input type="radio" name="resultType" value="return_final_result" onclick="toggleImage(false)" /> 分行显示结果
             </label>
             <label class="radio-inline">
-                <input checked name="resultType" onclick="toggleImage(false)" type="radio" value="return_result"> 分行显示数据
+                <input type="radio" name="resultType" value="return_result" onclick="toggleImage(false)" checked /> 分行显示数据
             </label>
             <label class="radio-inline">
-                <input name="resultType" onclick="toggleImage(true)" type="radio"
-                       value="return_result_with_result_photo"> 分行显示数据 + 标注图片
+                <input type="radio" name="resultType" value="return_result_with_result_photo" onclick="toggleImage(true)" /> 分行显示数据 + 标注图片
             </label>
         </div>
 
         <button onclick="uploadImage()">上传并识别</button>
-        <div class="status" id="statusMessage"></div>
+        <div id="statusMessage" class="status"></div>
     </div>
 
     <div class="card">
         <h3>识别结果</h3>
-        <div class="result-block" id="resultText">等待识别...</div>
+        <div id="resultText" class="result-block">等待识别...</div>
         <button onclick="copyResult()">复制结果</button>
     </div>
 
     <div class="card" id="imageCard" style="display: none;">
         <h3>标注图片</h3>
         <div class="image-container" id="imageContainer">
-            <div class="no-image" id="noImageMessage">识别后将显示标注图片</div>
-            <img id="resultImage"
-                 style="max-width: 100%; border-radius: 4px; border: 1px solid var(--border); display: none;">
+            <div id="noImageMessage" class="no-image">识别后将显示标注图片</div>
         </div>
-
     </div>
 </div>
 
@@ -220,22 +194,38 @@
         status.textContent = message;
     }
 
+    // 显示多张标注图片
+    function showResultImages(imageList) {
+        const imageContainer = document.getElementById('imageContainer');
+        imageContainer.innerHTML = ''; // 先清空之前的内容
+
+        if (!imageList || imageList.length === 0) {
+            imageContainer.innerHTML = '<div class="no-image">识别后将显示标注图片</div>';
+            return;
+        }
+
+        for (const base64Img of imageList) {
+            const img = document.createElement('img');
+            img.src = 'data:image/jpeg;base64,' + base64Img;
+            img.style.maxWidth = '100%';
+            img.style.borderRadius = '4px';
+            img.style.border = '1px solid #e1e4e8';
+            img.style.marginBottom = '10px';
+            imageContainer.appendChild(img);
+        }
+    }
+
     async function uploadImage() {
         const fileInput = document.getElementById('fileInput');
         const apiEndpoint = document.getElementById('apiEndpoint').value.trim();
         const resultText = document.getElementById('resultText');
-        const noImageMessage = document.getElementById('noImageMessage');
-        const imageContainer = document.getElementById('imageContainer');
-
 
         resultText.textContent = '识别中，请稍候...';
-        noImageMessage.style.display = 'block';
 
-        const resultType = document.querySelector('input[name="resultType"]:checked')?.value;
-        const model = document.querySelector('input[name="model"]:checked')?.value;
+        toggleImage(false);
 
         if (!fileInput.files.length) {
-            showMessage('error', '请上传 PDF 文件');
+            showMessage('error', '请上传文件');
             return;
         }
 
@@ -244,12 +234,15 @@
             return;
         }
 
+        const resultType = document.querySelector('input[name="resultType"]:checked')?.value;
+        const model = document.querySelector('input[name="model"]:checked')?.value;
+
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
         formData.append('result_type', resultType);
         formData.append('model', model);
 
-        showMessage('', '正在上传 PDF 并识别...');
+        showMessage('', '正在上传文件并识别...');
 
         try {
             const response = await fetch(apiEndpoint, {
@@ -260,11 +253,11 @@
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 showMessage('error', `服务器错误: ${errorData.detail || response.statusText}`);
+                resultText.textContent = '识别失败';
                 return;
             }
 
             const data = await response.json();
-            console.log('OCR接口响应数据:', data);
 
             if (data.result) {
                 if (typeof data.result === 'string') {
@@ -283,27 +276,28 @@
             } else if (data.error) {
                 const timeInfo = data.detail_time ? `（耗时 ${data.detail_time} s）` : '';
                 showMessage('error', `识别失败: ${data.error} ${timeInfo}`);
+                resultText.textContent = '识别失败';
             }
-
 
             if (resultType === 'return_result_with_result_photo' && data.image_base64_list && data.image_base64_list.length > 0) {
                 toggleImage(true);
-                imageContainer.innerHTML = '';  // 清空旧图像
-                data.image_base64_list.forEach(base64 => {
-                    const img = document.createElement('img');
-                    img.src = 'data:image/jpeg;base64,' + base64;
-                    img.className = 'result-img';
-                    imageContainer.appendChild(img);
-                });
-                noImageMessage.style.display = 'none';
+                showResultImages(data.image_base64_list);
             } else {
                 toggleImage(false);
             }
-
-
         } catch (err) {
             showMessage('error', '请求失败: ' + err.message);
+            resultText.textContent = '请求失败';
         }
+    }
+
+    function copyResult() {
+        const text = document.getElementById('resultText').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            showMessage('success', '识别结果已复制');
+        }).catch(err => {
+            showMessage('error', '复制失败: ' + err);
+        });
     }
 </script>
 </body>

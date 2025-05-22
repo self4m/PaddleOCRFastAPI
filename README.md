@@ -5,89 +5,85 @@
 
 # 安装步骤
 
-1. **创建虚拟环境**（在项目根目录执行）：
 
-```bash
-python -m venv PaddleOCRFastAPI
-```
-
-2. **激活虚拟环境**
-
-* Windows (cmd)：
-
-```cmd
-PaddleOCRFastAPI\Scripts\activate
-```
-
-* Windows (PowerShell)：
-
-```powershell
-PaddleOCRFastAPI\Scripts\Activate.ps1
-```
-
-* macOS / Linux (bash/zsh)：
-
-```bash
-source PaddleOCRFastAPI/bin/activate
-```
-
-* **退出虚拟环境（所有平台通用）**：
-
-```bash
-deactivate
-```
-
-3. **安装依赖**
-
+1. 安装依赖
 * 先访问官网安装 PaddlePaddle（根据系统和环境选择合适版本）
   [https://www.paddlepaddle.org.cn/install/quick](https://www.paddlepaddle.org.cn/install/quick)
+  
 * 安装其他依赖：
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-```bash
-pip install fastapi uvicorn paddleocr opencv-python numpy pydantic python-multipart pymupdf pillow
-```
+2. 模型文件下载
+项目仓库中已提供以全量模型和轻量模型，无需下载。
 
-4. **模型文件下载**  
-   项目默认自动下载两种模型：
-
-* **全量模型**
-* **轻量模型**  
-  不同接口调用不同模型。  
-  如果需要使用自定义模型，请修改代码中 `DET_MODEL_DIR`、`REC_MODEL_DIR`、`CLS_MODEL_DIR` 等变量。
-
-5. **启动项目**
-
-* 可通过双击平台对应的启动脚本启动
-* 或通过命令行启动（开发时建议加 `--reload` 热重载）：
-
-```bash
-uvicorn start:app --host 127.0.0.1 --port 8888 --reload=true
-```
-
-* 默认服务监听地址和端口为 `127.0.0.1:8888`，只允许本机访问。
-* 如需允许局域网访问，可修改启动命令或代码，将 `host` 改为 `0.0.0.0`。
+3. 通过命令行启动项目
+    ```bash
+    uvicorn start:app --host 127.0.0.1 --port 8888 --reload
+    ```
+* 如需允许局域网访问，可修改启动命令，将 `127.0.0.1` 改为 `0.0.0.0`
 
 ---
 
-# 接口信息
+# 接口文档
 
-## 图片识别接口
+#### 基本信息
+- **URL**: `/ocr`
+- **HTTP 方法**: `POST`
+- **Content-Type**: `multipart/form-data`
+- **响应格式**: `application/json`
 
-| 请求路径 | /ocr\_image\_light         | /ocr\_image\_full         |
-| ---- | -------------------------- | ------------------------- |
-| 接口名称 | 图片文字提取——超轻量模型              | 图片文字提取——全量模型              |
-| 请求方式 | POST                       | POST                      |
-| 请求参数 | file: 图片文件（UploadFile）     | file: 图片文件（UploadFile）    |
-| 返回内容 | 识别出的文字文本                   | 识别出的文字文本                  |
-| 备注   | 使用轻量级OCR模型，带文字检测（det=True） | 使用全量OCR模型，带文字检测（det=True） |
+#### 请求参数
 
-## PDF识别接口
+| 参数名      | 类型       | 是否必须 | 说明                     |
+|-------------|------------|----------|--------------------------|
+| file        | 文件(File) | 是       | 需要上传的图片或PDF文件。支持的图片类型包括JPEG、PNG等；支持PDF文件。 |
+| result_type | 字符串(Str) | 是       | 结果返回类型。<br>可选值：`return_final_result_one_line`, `return_final_result`, `return_result`, `return_result_with_result_photo`。分别对应不分行显示结果、分行显示结果、分行显示数据、分行显示数据并附带标注图片。 |
+| model       | 字符串(Str) | 是       | 使用的OCR模型。<br>可选值：`ocr_light`（轻量模型），`ocr_server`（全量模型）。 |
 
-| 请求路径 | /ocr\_pdf\_light           | /ocr\_pdf\_full           |
-| ---- | -------------------------- | ------------------------- |
-| 接口名称 | PDF文字提取——超轻量模型             | PDF文字提取——全量模型             |
-| 请求方式 | POST                       | POST                      |
-| 请求参数 | file: PDF文件（UploadFile）    | file: PDF文件（UploadFile）   |
-| 返回内容 | 识别出的文字文本                   | 识别出的文字文本                  |
-| 备注   | 使用轻量级OCR模型，带文字检测（det=True） | 使用全量OCR模型，带文字检测（det=True） |
+#### 返回字段
 
+- **result**: 根据所选的`result_type`不同，返回的结果格式会有所不同。
+    - 如果选择了`return_final_result_one_line`，则返回一个字符串，代表所有文字连接成的一行文本。
+    - 如果选择了`return_final_result`，则返回一个数组，每个元素为一行文本。
+    - 如果选择了`return_result`，则返回一个数组，每个元素是一个包含位置和文本的元组。
+    - 如果选择了`return_result_with_result_photo`，除了上述结果外，还会额外返回标注图片的base64编码列表。
+- **image_base64_list**: 当且仅当`result_type`为`return_result_with_result_photo`时出现，包含每页处理后的图像的base64编码。
+- **detail_time**: 处理所需时间（秒）。
+- **error**: 发生错误时返回的信息（如果有）。
+
+#### 示例请求
+
+```bash
+curl -X POST "http://127.0.0.1:8888/ocr" \
+-H "accept: application/json" \
+-F "file=@/path/to/your/file.png" \
+-F "result_type=return_result_with_result_photo" \
+-F "model=ocr_light"
+```
+
+#### 示例响应
+
+成功情况下（以`return_result_with_result_photo`为例）：
+
+```json
+{
+  "result": [
+    [[430.0, 59.0], [559.0, 59.0], [559.0, 93.0], [430.0, 93.0]],
+    "识别结果示例",
+    0.998164
+  ],
+  "image_base64_list": ["base64_encoded_image_string_here"],
+  "detail_time": 1.234
+}
+```
+
+错误情况下：
+
+```json
+{
+  "error": "无效的 result_type 参数",
+  "detail_time": 0.002
+}
+```
