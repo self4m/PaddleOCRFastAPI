@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OCR 文字识别工具</title>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #6b8cae;
+            --bg: #f5f7fa;
+            --card-bg: #fff;
+            --text: #333;
+            --border: #e1e4e8;
+            --success: #28a745;
+            --error: #dc3545;
+        }
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
+        }
+        h1, h2, h3 {
+            color: var(--primary);
+            margin-top: 0;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: var(--secondary);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+            margin-top: 16px;
+        }
+        .status.success {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: var(--success);
+            display: block;
+        }
+        .status.error {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: var(--error);
+            display: block;
+        }
+        .result-block {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+            min-height: 120px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .image-container {
+            text-align: center;
+            margin-top: 16px;
+        }
+        .image-container img {
+            max-width: 100%;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .no-image {
+            color: #888;
+            font-style: italic;
+            padding: 20px;
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>OCR 文字识别工具</h1>
+
+    <div class="card">
+        <h2>上传文件进行文字识别</h2>
+
+        <div class="form-group">
+            <label for="apiEndpoint">API 接口地址</label>
+            <input type="text" id="apiEndpoint" value="http://127.0.0.1:8000/ocr" />
+        </div>
+
+        <div class="form-group">
+            <label for="fileInput">选择图片或 PDF 文件</label>
+            <input type="file" id="fileInput" accept="image/*,.pdf" />
+        </div>
+
+        <button onclick="uploadImage()">上传并识别</button>
+        <div id="statusMessage" class="status"></div>
+    </div>
+
+    <div class="card">
+        <h3>识别结果</h3>
+        <div id="resultText" class="result-block">等待识别...</div>
+        <button onclick="copyResult()">复制结果</button>
+    </div>
+
+    <div class="card">
+        <h3>标注图片</h3>
+        <div class="image-container" id="imageContainer">
+            <div class="no-image">识别后将显示标注图片</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showMessage(type, message) {
+        const status = document.getElementById('statusMessage');
+        status.className = `status ${type}`;
+        status.textContent = message;
+    }
+
+    // 显示多张标注图片
+    function showResultImages(imageList) {
+        const imageContainer = document.getElementById('imageContainer');
+        imageContainer.innerHTML = ''; // 清空旧内容
+
+        if (!imageList || imageList.length === 0) {
+            imageContainer.innerHTML = '<div class="no-image">识别后将显示标注图片</div>';
+            return;
+        }
+
+        for (const base64Img of imageList) {
+            const img = document.createElement('img');
+            img.src = base64Img;  // 已经包含 data:image/png;base64,...
+            img.style.maxWidth = '100%';
+            img.style.borderRadius = '4px';
+            img.style.marginBottom = '10px';
+            imageContainer.appendChild(img);
+        }
+    }
+
+    async function uploadImage() {
+        const fileInput = document.getElementById('fileInput');
+        const apiEndpoint = document.getElementById('apiEndpoint').value.trim();
+        const resultText = document.getElementById('resultText');
+
+        resultText.textContent = '识别中，请稍候...';
+
+        if (!fileInput.files.length) {
+            showMessage('error', '请上传文件');
+            return;
+        }
+
+        if (!apiEndpoint) {
+            showMessage('error', '请输入 API 接口地址');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        showMessage('', '正在上传文件并识别...');
+
+        try {
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                showMessage('error', `服务器错误: ${errorData.detail || response.statusText}`);
+                resultText.textContent = '识别失败';
+                return;
+            }
+
+            const data = await response.json();
+
+            if (data.result && Array.isArray(data.result)) {
+                resultText.textContent = data.result.join('\n');
+                const timeInfo = data.detail_time ? `（耗时 ${data.detail_time.toFixed(3)} s）` : '';
+                showMessage('success', `识别成功 ${timeInfo}`);
+
+                // 显示标注图片
+                if (data.image_list && data.image_list.length > 0) {
+                    showResultImages(data.image_list);
+                }
+            } else if (data.error) {
+                const timeInfo = data.detail_time ? `（耗时 ${data.detail_time.toFixed(3)} s）` : '';
+                showMessage('error', `识别失败: ${data.error} ${timeInfo}`);
+                resultText.textContent = '识别失败';
+            } else {
+                showMessage('error', '未知响应格式');
+                resultText.textContent = '解析失败';
+            }
+
+        } catch (err) {
+            showMessage('error', '请求失败: ' + err.message);
+            resultText.textContent = '请求失败';
+        }
+    }
+
+    function copyResult() {
+        const text = document.getElementById('resultText').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            showMessage('success', '识别结果已复制');
+        }).catch(err => {
+            showMessage('error', '复制失败: ' + err);
+        });
+    }
+</script>
+</body>
+</html>

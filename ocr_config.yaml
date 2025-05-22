@@ -1,0 +1,46 @@
+SubModules:
+  TextDetection:  # 文本检测子模块（如使用DB算法）
+    box_thresh: 0.6               # 检测框阈值，平均得分高于此值的区域被认为是文字区域
+    limit_side_len: 736          # 输入图像的最小边长度或最大边长度（由 limit_type 决定）
+    limit_type: min              # 边长限制类型，这里表示图像的最短边不能小于 736
+    max_side_limit: 4000         # 图像最大支持边长上限，用于避免过大图像造成OOM
+    model_dir: models/PP-OCRv5_server_det_infer              # 模型目录路径，若为 null 表示自动下载模型
+    model_name: PP-OCRv5_server_det  # 使用的文本检测模型名称
+    module_name: text_detection  # 模块名（用于标识或动态加载）
+    thresh: 0.3                  # 像素阈值，大于此值的区域被认为是文字像素点
+    unclip_ratio: 1.5            # 扩张系数，用于对文字区域进行膨胀（提升召回）
+
+  TextLineOrientation:  # 文本行方向检测模块（识别是否竖排）
+    batch_size: 6                # 批处理大小
+    model_dir: models/PP-LCNet_x0_25_textline_ori              # 模型目录路径
+    model_name: PP-LCNet_x0_25_textline_ori  # 模型名称
+    module_name: textline_orientation        # 模块名
+
+  TextRecognition:  # 文本识别模块
+    batch_size: 6                # 识别模型的批处理大小
+    model_dir: models/PP-OCRv5_server_rec_infer              # 模型目录路径
+    model_name: PP-OCRv5_server_rec  # 文本识别模型名称
+    module_name: text_recognition    # 模块名
+    score_thresh: 0.0            # 识别得分阈值，得分高于此值的结果保留；为0表示全部保留
+
+SubPipelines:
+  DocPreprocessor:  # 文档预处理流程，包含文档方向识别与矫正
+    SubModules:
+      DocOrientationClassify:  # 文档方向分类模块（纠正0/90/180度）
+        model_dir: models/PP-LCNet_x1_0_doc_ori              # 模型路径
+        model_name: PP-LCNet_x1_0_doc_ori  # 模型名称
+        module_name: doc_text_orientation  # 模块名
+
+      DocUnwarping:  # 文档图像矫正模块（如变形矫正、透视变换等）
+        model_dir: models/UVDoc             # 模型路径
+        model_name: UVDoc            # 模型名称
+        module_name: image_unwarping # 模块名
+
+    pipeline_name: doc_preprocessor         # 子流程名称
+    use_doc_orientation_classify: true      # 是否启用文档方向分类
+    use_doc_unwarping: true                 # 是否启用文档图像矫正功能
+
+pipeline_name: OCR                 # 总流程名称（即主 OCR 流程）
+text_type: general                 # 识别任务类型：如 general（通用），table（表格），handwriting（手写）
+use_doc_preprocessor: false         # 是否使用文档预处理（包括方向分类、图像矫正）
+use_textline_orientation: true     # 是否启用文本行方向识别
