@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>Base64还原图像</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+            font-size: 14px;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+        img {
+            max-width: 100%;
+            max-height: 400px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            display: none; /* 初始隐藏 */
+        }
+        button {
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #errorMsg {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>通用Base64还原图像</h2>
+    <textarea id="base64Input" placeholder="请输入Base64编码字符串，支持带或不带data:image/...前缀"></textarea>
+    <br />
+    <button onclick="restoreImage()">还原图像</button>
+    <div id="errorMsg"></div>
+    <img id="resultImage" alt="还原的图像将显示在这里" />
+
+    <script>
+        function restoreImage() {
+            const inputStr = document.getElementById('base64Input').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+            const img = document.getElementById('resultImage');
+            errorMsg.textContent = '';
+            img.style.display = 'none';
+            img.src = '';
+
+            if (!inputStr) {
+                errorMsg.textContent = '请输入Base64编码字符串';
+                return;
+            }
+
+            let dataUrl = '';
+
+            if (inputStr.startsWith('data:image/')) {
+                // 带前缀，直接用
+                dataUrl = inputStr;
+            } else {
+                // 不带前缀，默认用png格式拼接
+                dataUrl = 'data:image/png;base64,' + inputStr;
+            }
+
+            img.onload = function() {
+                img.style.display = 'block';
+            };
+
+            img.onerror = function() {
+                errorMsg.textContent = '图像加载失败，请确认Base64编码是否正确及格式是否匹配';
+                img.style.display = 'none';
+                img.src = '';
+            };
+
+            img.src = dataUrl;
+        }
+    </script>
+</body>
+</html>
