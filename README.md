@@ -1,7 +1,8 @@
 # 说明
 
 本项目基于 FastAPI 集成 PaddleOCR，实现图片和 PDF 文件的文字识别。   
-使用2025年5月20日发布的新识别模型PP-OCRv5，测试发现识别精准度以及速度仅有提升  
+使用2025年5月20日发布的新识别模型PP-OCRv5，测试发现识别精准度以及速度均有提升  
+原基于 PP-OCRv4 开发的内容已切换至分支 PP-OCRv4 ，可访问 [PP-OCRv4](https://github.com/self4m/PaddleOCRFastAPI/tree/PP-OCRv4)  查看
 
 # 识别说明  
 需要注意的是未经过训练的模型更适合用于识别格式统一、字体规范的文本，例如：
