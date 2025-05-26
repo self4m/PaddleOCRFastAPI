@@ -124,3 +124,22 @@ curl -X POST "http://127.0.0.1:8000/ocr" \
   "detail_time": 0.005
 }
 ```
+
+# 离线部署
+以使用 CUDA 12.6 版本的 NVIDIA GPU 的设备为例:
+1. 在有网络的相同系统的设备上 clone 本项目
+2. 将`requirements.txt`文件中的`paddlepaddle-gpu==3.0.0`注释
+3. 执行下面的命令下载依赖
+    ```bash
+   pip download -r requirements.txt -d packages
+    ```
+4. 单独下载`paddlepaddle-gpu==3.0.0`依赖
+    ```bash
+   pip download paddlepaddle-gpu==3.0.0 -d packages -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+    ```
+5. 复制 `packages` 目录到目标设备的仓库中
+6. 安装所有依赖
+    ```bash
+   pip install --no-index --find-links=packages -r requirements.txt
+    ```
+7. 启动项目

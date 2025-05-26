@@ -8,14 +8,22 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+from pathlib import Path
 
 import numpy as np
 from fastapi import UploadFile, File
+
+# 字体文件，两种字体二选一
+# os.environ["PADDLE_PDX_LOCAL_FONT_FILE_PATH"] = Path("fonts/PingFang-SC-Regular.ttf").resolve().as_posix()
+os.environ["PADDLE_PDX_LOCAL_FONT_FILE_PATH"] = Path("fonts/simfang.ttf").resolve().as_posix()
+
 from paddleocr import PaddleOCR
 import fastapi
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
+font_path = Path("./fonts/PingFang-SC-Regular.ttf").resolve()
+LOCAL_FONT_FILE_PATH = str(font_path)
 
 MAX_CONCURRENT_OCR = 4
 ocr_semaphore = asyncio.Semaphore(MAX_CONCURRENT_OCR)
